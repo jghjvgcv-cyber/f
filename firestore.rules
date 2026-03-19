@@ -1,0 +1,180 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: drivers
+    // Fields: name, code, plate, vehicle, uid
+    //
+    // Collection: shifts
+    // Fields: driverId, startTime, endTime, quilometragem_inicial, quilometragem_final, status, date
+    //
+    // Collection: checklists
+    // Fields: shiftId, driverId, oilPhoto, dashboardPhoto, tirePhoto, timestamp
+    //
+    // Collection: deliveryReports
+    // Fields: shiftId, driverId, received, delivered, pending, timestamp
+    //
+    // Collection: expenseReports
+    // Fields: shiftId, driverId, fuel, toll, maintenance, receiptPhoto, timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        request.auth.token.email != null &&
+        request.auth.token.email_verified == true &&
+        (
+          (request.auth.token.email.lower() == "jghjvgcv@gmail.com") ||
+          (exists(/databases/$(database)/documents/authorized_admins/$(request.auth.token.email.lower())))
+        );
+    }
+
+    function isValidDriver(data) {
+      return data.keys().hasAll(['name', 'code', 'plate', 'vehicle', 'uid', 'vehicleStatus']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.code is string && data.code.size() > 0 && data.code.size() < 20 &&
+             data.plate is string && data.plate.size() > 0 && data.plate.size() < 15 &&
+             data.vehicle is string && data.vehicle.size() > 0 && data.vehicle.size() < 50 &&
+             data.uid == request.auth.uid &&
+             data.vehicleStatus in ['operational', 'maintenance_required', 'out_of_service'];
+    }
+
+    function isValidChecklist(data) {
+      return data.keys().hasAll(['shiftId', 'driverId', 'oilPhoto', 'dashboardPhoto', 'tirePhoto', 'timestamp', 'oilStatus', 'dashboardStatus', 'tireStatus']) &&
+             data.driverId == request.auth.uid &&
+             data.oilPhoto is string && data.dashboardPhoto is string && data.tirePhoto is string &&
+             data.oilStatus is string && data.dashboardStatus is string && data.tireStatus is string;
+    }
+
+    function isValidDeliveryReport(data) {
+      return data.keys().hasAll(['shiftId', 'driverId', 'received', 'delivered', 'pending', 'timestamp']) &&
+             data.driverId == request.auth.uid &&
+             data.received is number && data.delivered is number && data.pending is number;
+    }
+
+    function isValidExpenseReport(data) {
+      return data.keys().hasAll(['shiftId', 'driverId', 'timestamp']) &&
+             data.driverId == request.auth.uid;
+    }
+
+    function isValidShift(data) {
+      return data.keys().hasAll(['driverId', 'startTime', 'status', 'date']) &&
+             data.driverId == request.auth.uid &&
+             data.status in ['active', 'completed'] &&
+             data.date is string &&
+             (!('quilometragem_inicial' in data) || data.quilometragem_inicial is number) &&
+             (!('quilometragem_final' in data) || data.quilometragem_final is number) &&
+             (!('targetDeliveries' in data) || data.targetDeliveries is number) &&
+             (!('orderNumbers' in data) || data.orderNumbers is list);
+    }
+
+    function isValidHelpRequest(data) {
+      return data.keys().hasAll(['driverId', 'message', 'status', 'timestamp']) &&
+             data.driverId == request.auth.uid &&
+             data.message is string && data.message.size() > 0 &&
+             data.status in ['pending', 'resolved'];
+    }
+
+    function isValidMessage(data) {
+      return data.keys().hasAll(['driverId', 'senderId', 'timestamp']) &&
+             data.senderId == request.auth.uid &&
+             (data.driverId == request.auth.uid || isAdmin());
+    }
+
+    function isValidLocation(data, docId) {
+      return data.keys().hasAll(['driverId', 'latitude', 'longitude', 'timestamp']) &&
+             data.driverId == docId &&
+             data.driverId == request.auth.uid &&
+             data.latitude is number &&
+             data.longitude is number &&
+             data.timestamp == request.time &&
+             (!('status' in data) || data.status is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /drivers/{driverId} {
+      // Allow any authenticated user to read driver data (needed for Plate Login and Manager)
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(driverId) && isValidDriver(request.resource.data);
+      // Allow update if owner, admin, or if plate/code match (for Plate Login UID claiming)
+      allow update: if isAuthenticated() && (
+        isOwner(driverId) || 
+        isAdmin() || 
+        (request.resource.data.plate == resource.data.plate && request.resource.data.code == resource.data.code)
+      );
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    match /shifts/{shiftId} {
+      // Allow drivers to read their own shifts, and admins to read all
+      // For Plate Login users, we allow read if they are authenticated
+      allow read: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidShift(request.resource.data);
+      allow update: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+    }
+
+    match /checklists/{checklistId} {
+      allow read: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidChecklist(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+    }
+
+    match /deliveryReports/{reportId} {
+      allow read: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidDeliveryReport(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+    }
+
+    match /expenseReports/{reportId} {
+      allow read: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidExpenseReport(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+    }
+
+    match /helpRequests/{requestId} {
+      allow read: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidHelpRequest(request.resource.data);
+      allow update, delete: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && (resource.data.driverId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidMessage(request.resource.data);
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    match /locations/{driverId} {
+      allow read: if isAuthenticated() && (isOwner(driverId) || isAdmin());
+      allow create, update: if isOwner(driverId) && isValidLocation(request.resource.data, driverId);
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    match /authorized_admins/{email} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+  }
+}

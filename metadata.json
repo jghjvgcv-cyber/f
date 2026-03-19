@@ -1,0 +1,5 @@
+{
+  "name": "HF Transportes e Aluguéis",
+  "description": "Gestão profissional de frota e aluguéis de carrinhas. Controle de ponto, checklist, entregas e despesas em tempo real.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"]
+}

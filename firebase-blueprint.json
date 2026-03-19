@@ -1,0 +1,135 @@
+{
+  "entities": {
+    "Driver": {
+      "title": "Driver",
+      "description": "Driver profile information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Full name of the driver" },
+        "code": { "type": "string", "description": "Driver identification code" },
+        "plate": { "type": "string", "description": "Vehicle plate number" },
+        "vehicle": { "type": "string", "description": "Vehicle model" },
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "vehicleStatus": { 
+          "type": "string", 
+          "enum": ["operational", "maintenance_required", "out_of_service"], 
+          "description": "Current condition of the vehicle" 
+        }
+      },
+      "required": ["name", "code", "plate", "vehicle", "uid", "vehicleStatus"]
+    },
+    "Shift": {
+      "title": "Shift",
+      "description": "Driver work shift record",
+      "type": "object",
+      "properties": {
+        "driverId": { "type": "string", "description": "Reference to driver UID" },
+        "startTime": { "type": "string", "format": "date-time", "description": "Shift start timestamp" },
+        "endTime": { "type": "string", "format": "date-time", "description": "Shift end timestamp" },
+        "quilometragem_inicial": { "type": "number", "description": "Initial odometer reading" },
+        "quilometragem_final": { "type": "number", "description": "Final odometer reading" },
+        "total_entregas": { "type": "number", "description": "Total deliveries made" },
+        "targetDeliveries": { "type": "number", "description": "Target deliveries set by manager" },
+        "orderNumbers": { "type": "array", "items": { "type": "string" }, "description": "List of order numbers assigned by manager" },
+        "status": { "type": "string", "enum": ["active", "completed"], "description": "Shift status" },
+        "date": { "type": "string", "description": "Shift date (YYYY-MM-DD)" }
+      },
+      "required": ["driverId", "startTime", "status", "date"]
+    },
+    "Checklist": {
+      "title": "Checklist",
+      "description": "Vehicle inspection checklist",
+      "type": "object",
+      "properties": {
+        "shiftId": { "type": "string", "description": "Reference to shift ID" },
+        "driverId": { "type": "string", "description": "Reference to driver UID" },
+        "oilStatus": { "type": "string", "description": "Status of oil level (e.g., OK, Low)" },
+        "dashboardStatus": { "type": "string", "description": "Status of dashboard lights/gauges" },
+        "tireStatus": { "type": "string", "description": "Status of tires" },
+        "oilPhoto": { "type": "string", "description": "Base64 or URL of oil level photo" },
+        "dashboardPhoto": { "type": "string", "description": "Base64 or URL of dashboard photo" },
+        "tirePhoto": { "type": "string", "description": "Base64 or URL of tire photo" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Checklist submission timestamp" }
+      },
+      "required": ["shiftId", "driverId", "oilPhoto", "dashboardPhoto", "tirePhoto", "timestamp"]
+    },
+    "DeliveryReport": {
+      "title": "DeliveryReport",
+      "description": "Daily delivery status report",
+      "type": "object",
+      "properties": {
+        "shiftId": { "type": "string", "description": "Reference to shift ID" },
+        "driverId": { "type": "string", "description": "Reference to driver UID" },
+        "received": { "type": "number", "description": "Total packages received" },
+        "delivered": { "type": "number", "description": "Total packages delivered" },
+        "pending": { "type": "number", "description": "Total packages pending" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Report submission timestamp" }
+      },
+      "required": ["shiftId", "driverId", "received", "delivered", "pending", "timestamp"]
+    },
+    "ExpenseReport": {
+      "title": "ExpenseReport",
+      "description": "Daily expense report with receipt",
+      "type": "object",
+      "properties": {
+        "shiftId": { "type": "string", "description": "Reference to shift ID" },
+        "driverId": { "type": "string", "description": "Reference to driver UID" },
+        "fuel": { "type": "number", "description": "Fuel expense amount" },
+        "toll": { "type": "number", "description": "Toll expense amount" },
+        "maintenance": { "type": "number", "description": "Maintenance expense amount" },
+        "receiptPhoto": { "type": "string", "description": "Base64 or URL of receipt photo" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Report submission timestamp" }
+      },
+      "required": ["shiftId", "driverId", "timestamp"]
+    },
+    "helpRequests": {
+      "title": "HelpRequest",
+      "description": "Requests for help from drivers",
+      "type": "object",
+      "properties": {
+        "driverId": { "type": "string", "description": "Reference to driver UID" },
+        "message": { "type": "string", "description": "Help message" },
+        "status": { "type": "string", "enum": ["pending", "resolved"], "description": "Request status" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Request timestamp" }
+      },
+      "required": ["driverId", "message", "status", "timestamp"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Chat message between driver and manager",
+      "type": "object",
+      "properties": {
+        "driverId": { "type": "string", "description": "Reference to driver UID" },
+        "senderId": { "type": "string", "description": "UID of the sender" },
+        "text": { "type": "string", "description": "Message text" },
+        "photo": { "type": "string", "description": "Base64 or URL of photo" },
+        "audio": { "type": "string", "description": "Base64 or URL of audio" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Message timestamp" }
+      },
+      "required": ["driverId", "senderId", "timestamp"]
+    },
+    "DriverLocation": {
+      "title": "DriverLocation",
+      "description": "Real-time location of a driver",
+      "type": "object",
+      "properties": {
+        "driverId": { "type": "string", "description": "Reference to driver UID" },
+        "latitude": { "type": "number", "description": "Latitude coordinate" },
+        "longitude": { "type": "number", "description": "Longitude coordinate" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Last update timestamp" },
+        "status": { "type": "string", "description": "Current status (e.g., active, moving, stopped)" }
+      },
+      "required": ["driverId", "latitude", "longitude", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/drivers/{driverId}": { "schema": "Driver", "description": "Driver profiles" },
+    "/shifts/{shiftId}": { "schema": "Shift", "description": "Work shifts" },
+    "/checklists/{checklistId}": { "schema": "Checklist", "description": "Vehicle checklists" },
+    "/deliveryReports/{reportId}": { "schema": "DeliveryReport", "description": "Delivery reports" },
+    "/expenseReports/{reportId}": { "schema": "ExpenseReport", "description": "Expense reports" },
+    "/helpRequests/{requestId}": { "schema": "HelpRequest", "description": "Help requests" },
+    "/messages/{messageId}": { "schema": "Message", "description": "Chat messages" },
+    "/locations/{driverId}": { "schema": "DriverLocation", "description": "Real-time driver locations" }
+  }
+}
