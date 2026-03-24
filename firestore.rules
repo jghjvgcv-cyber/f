@@ -176,5 +176,14 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow write: if isOwner(userId) || isAdmin();
     }
+
+    match /test/{doc} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
   }
 }

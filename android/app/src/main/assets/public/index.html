@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#10b981" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="https://picsum.photos/seed/hf-transportes/192/192" />
+    <title>HF Transportes e Aluguéis</title>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(registration => console.log('SW registered'))
+            .catch(err => console.log('SW registration failed: ', err));
+        });
+      }
+      // Patch to prevent "Cannot set property fetch of #<Window> which has only a getter"
+      (function() {
+        try {
+          const originalFetch = window.fetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() { return originalFetch; },
+            set: function() { console.warn('Blocked attempt to overwrite window.fetch'); },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {
+          // If we can't redefine it, at least we tried.
+          // Sometimes it's already non-configurable.
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-Bcp-0p0L.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/vendor-charts-DAo0s4EY.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-firebase-DuhlfgPZ.js">
+    <link rel="modulepreload" crossorigin href="/assets/vendor-ui-7Inuax1h.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-B84eox8a.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+
